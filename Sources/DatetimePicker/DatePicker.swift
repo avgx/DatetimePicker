@@ -1,13 +1,17 @@
 //
 //  DatePicker.swift
+//  iPadTesting
 //
-//
-//  Created by Артём Черныш on 6.02.24.
+//  Created by Артём Черныш on 15.02.24.
 //
 
 import SwiftUI
 
 struct SelectDatePicker: View {
+    let calendarFont: Font?
+    let calendarPadding: CGFloat?
+    let titleFont: Font?
+    
     private let days: [String] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
@@ -21,10 +25,25 @@ struct SelectDatePicker: View {
     @State
     var monthToPresent: Date
     
+    @State
+    var isYearPickerOpened: Bool = false
+    
     init(selection: Binding<Date>, selectable: Binding<[Date]?>) {
         self._selectable = selectable
         self._monthToPresent = State(initialValue: selection.wrappedValue)
         self._selection = selection
+        calendarPadding = 5
+        calendarFont = .title3.bold()
+        titleFont = .title2
+    }
+    
+    init(selection: Binding<Date>, selectable: Binding<[Date]?>, calendarFont: Font?, calendarPadding: CGFloat?, titleFont: Font?) {
+        self._selectable = selectable
+        self._monthToPresent = State(initialValue: selection.wrappedValue)
+        self._selection = selection
+        self.calendarFont = calendarFont
+        self.titleFont = titleFont
+        self.calendarPadding = calendarPadding
     }
     
     private var titleDate: String {
@@ -65,53 +84,65 @@ struct SelectDatePicker: View {
     }
     
     var body: some View {
-        VStack(spacing: 15) {
-            
-            HStack(spacing: 15) {
+        VStack {
+            HStack {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(titleDate)
-                        .font(.title2)
+                        .font(titleFont)
                         .fontWeight(.semibold)
                 }
+                Button(action: {
+                    withAnimation {
+                        isYearPickerOpened.toggle()
+                    }
+                }, label: {
+                    if isYearPickerOpened {
+                        Image(systemName: "chevron.down")
+                    } else {
+                        Image(systemName: "chevron.right")
+                    }
+                })
                 Spacer()
-                Button(action: {
-                    withAnimation {
-                        monthToPresent = Calendar.current.date(byAdding: .month, value: -1, to: monthToPresent) ?? monthToPresent
-                    }
-                }, label: {
-                    Image(systemName: "chevron.left")
-                        .font(.title2)
-                })
-                Button(action: {
-                    withAnimation {
-                        monthToPresent = Calendar.current.date(byAdding: .month, value: 1, to: monthToPresent) ?? monthToPresent
-                    }
-                }, label: {
-                    Image(systemName: "chevron.right")
-                        .font(.title2)
-                })
-            }
-            .padding(.horizontal)
-            
-            HStack {
-                ForEach(days, id: \.self) { day in
-                    Text(day)
-                        .font(.callout)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
+                if !isYearPickerOpened {
+                    Button(action: {
+                        withAnimation {
+                            monthToPresent = Calendar.current.date(byAdding: .month, value: -1, to: monthToPresent) ?? monthToPresent
+                        }
+                    }, label: {
+                        Image(systemName: "chevron.left")
+                            .font(titleFont)
+                    })
+                    Button(action: {
+                        withAnimation {
+                            monthToPresent = Calendar.current.date(byAdding: .month, value: 1, to: monthToPresent) ?? monthToPresent
+                        }
+                    }, label: {
+                        Image(systemName: "chevron.right")
+                            .font(titleFont)
+                    })
                 }
             }
+            .padding([.horizontal])
+            .padding(calendarPadding ?? 0)
             
-            LazyVGrid(columns: columns) {
-                ForEach(extraxtedDate) { value in
-                    if value.isSelectable {
+            if isYearPickerOpened {
+                YearPicker(selectable: $selectable, monthToPresent: $monthToPresent)
+            } else {
+                HStack {
+                    ForEach(days, id: \.self) { day in
+                        Text(day)
+                            .font(.callout)
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                
+                LazyVGrid(columns: columns) {
+                    ForEach(extraxtedDate) { value in
                         CardView(value: value)
                             .onTapGesture {
-                                selection = value.date
+                                value.isSelectable ? selection = value.date : nil
                             }
-                    } else {
-                        CardView(value: value)
-                            .foregroundColor(.gray)
                     }
                 }
             }
@@ -124,19 +155,21 @@ struct SelectDatePicker: View {
             if value.isVisible {
                 if Calendar.current.isDate(value.date, inSameDayAs: selection) {
                     Text("\(Calendar.current.component(.day, from: value.date))")
-                        .font(.title3.bold())
-                        .foregroundColor(.white)
+                        .font(calendarFont)
+                        .foregroundColor(value.isSelectable ? .white : .gray)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, calendarPadding ?? 0)
                         .background(
                             Circle()
-                                .fill(Color.red)
+                                .foregroundStyle(.red)
+                                .padding(-5)
                         )
                 } else {
                     Text("\(Calendar.current.component(.day, from: value.date))")
-                        .font(.title3.bold())
+                        .font(calendarFont)
+                        .foregroundColor(value.isSelectable ? nil : .gray)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, calendarPadding ?? 0)
                 }
             }
         }
